@@ -9,6 +9,7 @@ backend/node_modules/
 backend/.env
 backend/logs/
 backend/*.log
+backend/.env
 
 # Frontend specific
 frontend/node_modules/
