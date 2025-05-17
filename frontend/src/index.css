@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+        
+
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f0f4f8;
+    color: #333;
+}
+
+button {
+    transition: background-color 0.2s ease;
+}
+
+input {
+    transition: box-shadow 0.2s ease;
+}
+
+
+/* Add this for the toast animation */
+@keyframes slideDownFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  20% { /* Fade in and slide down quickly */
+    opacity: 1;
+    transform: translateY(0);
+  }
+  80% { /* Stay visible */
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% { /* Fade out and slide up (optional, or just hide via JS) */
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+.animate-slideDownFadeIn {
+  animation: slideDownFadeIn 3s ease-out forwards; /* Adjust duration to match JS timeout */
+}
