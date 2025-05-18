@@ -1,7 +1,7 @@
 // frontend/src/Pages/Login.jsx
-import React, { useState } from 'react';
-import Cookies from 'js-cookie'; // Ensure this is imported
-import apiClient from '../services/apiClient'; // Assuming this is your configured axios instance
+import React, { useState, useEffect } from 'react'; // <<--- useEffect YAHAN ADD KARO
+import Cookies from 'js-cookie';
+import apiClient from '../services/apiClient';
 import { useNavigate, Link } from 'react-router-dom';
 import { FiLogIn, FiMail, FiLock, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
 
@@ -34,19 +34,16 @@ const Login = () => {
     }
 
     try {
-      // apiClient already has withCredentials: true
       const res = await apiClient.post('/user/login', formData);
 
       if (res.data.user && res.data.token) {
-        // Set the cookie client-side using js-cookie
-        // This ensures js-cookie can read it, even if backend also sets a non-HttpOnly one
         Cookies.set('token', res.data.token, { 
-            expires: 1, // 1 day
-            path: '/',  // IMPORTANT for visibility across the site
-            // secure: process.env.NODE_ENV === 'production' // Enable for HTTPS production
+            expires: 1,
+            path: '/',
+            // secure: process.env.NODE_ENV === 'production' 
         });
         
-        window.dispatchEvent(new Event('authChange')); // Notify NavBar
+        window.dispatchEvent(new Event('authChange'));
         
         setShowLoginSuccessToast(true);
         
@@ -65,6 +62,7 @@ const Login = () => {
     }
   };
 
+  // This useEffect hook needs to be imported
   useEffect(() => {
     let timer;
     if (showLoginSuccessToast) {
@@ -75,7 +73,7 @@ const Login = () => {
     return () => clearTimeout(timer);
   }, [showLoginSuccessToast]);
 
-  // ... (rest of your JSX - I'm using the one you provided earlier which was good)
+  // ... (JSX remains the same)
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-100 px-4 py-12 sm:px-6 lg:px-8 relative">
       {showLoginSuccessToast && (
