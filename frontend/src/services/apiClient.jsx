@@ -1,17 +1,20 @@
+// frontend/src/services/apiClient.js
 import axios from 'axios';
 
-// Yeh line bahut important hai
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; 
+const VITE_ENV_VAR_VALUE = import.meta.env.VITE_API_BASE_URL;
+const FALLBACK_URL = 'http://localhost:3000';
 
-console.log("API Client Initializing. VITE_API_BASE_URL from env:", import.meta.env.VITE_API_BASE_URL); // DEBUG
+console.log("--- apiClient.js ---");
+console.log("Value of import.meta.env.VITE_API_BASE_URL from build:", VITE_ENV_VAR_VALUE);
+
+const effectiveBaseURL = VITE_ENV_VAR_VALUE || FALLBACK_URL;
 
 const apiClient = axios.create({
-  // Agar VITE_API_BASE_URL undefined hai toh fallback use hoga
-  baseURL: API_BASE_URL || 'http://localhost:3000', 
+  baseURL: effectiveBaseURL,
   withCredentials: true,
 });
 
-// DEBUG: Print the actual baseURL being used by the instance
-console.log("apiClient configured with baseURL:", apiClient.defaults.baseURL); 
+console.log("apiClient instance created. Final baseURL used by instance:", apiClient.defaults.baseURL);
+console.log("--- End apiClient.js ---");
 
 export default apiClient;
