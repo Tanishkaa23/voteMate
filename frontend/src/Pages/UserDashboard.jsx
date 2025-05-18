@@ -1,10 +1,11 @@
-// UserDashboard.jsx
+// src/Pages/UserDashboard.jsx
 import { useEffect, useState } from 'react';
-import axios from 'axios';
-import CreatePollForm from '../Components/CreatePollForm'; // Import the new component
-import PollListItem from '../Components/PollListItem';   // Import the new component
-import '../index.css'; // Make sure this path is correct
-import { FiPlusCircle, FiList, FiCheckSquare, FiLoader, FiAlertCircle } from 'react-icons/fi';
+// import axios from 'axios'; // Remove direct axios import
+import apiClient from '../services/apiClient'; // <<--- IMPORT apiClient (adjust path if needed)
+import CreatePollForm from '../Components/CreatePollForm';
+import PollListItem from '../Components/PollListItem';
+import '../index.css';
+import { FiPlusCircle, FiList, FiCheckSquare, FiAlertCircle } from 'react-icons/fi'; // Removed FiLoader as it's part of LoadingPlaceholder now
 
 export default function UserDashboard() {
   const [myPolls, setMyPolls] = useState([]);
@@ -14,59 +15,82 @@ export default function UserDashboard() {
   const [loadingVotedPolls, setLoadingVotedPolls] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchMyPolls();
-    fetchVotedPolls();
-  }, []);
-
-  const fetchMyPolls = async () => {
-    setLoadingMyPolls(true);
-    setError('');
-    try {
-      const res = await axios.get('http://localhost:3000/api/my-polls', { withCredentials: true });
-      setMyPolls(res.data.polls || []);
-    } catch (err) {
-      console.error("Error fetching my polls:", err);
-      setError(err.response?.data?.error || 'Failed to fetch your created polls.');
-      setMyPolls([]);
-    } finally {
-      setLoadingMyPolls(false);
-    }
-  };
-
-  const fetchVotedPolls = async () => {
+  // Moved fetchVotedPolls declaration up to be available for the dependency array logic
+  const fetchVotedPolls = async (currentMyPolls) => { // Pass currentMyPolls to avoid stale closure
     setLoadingVotedPolls(true);
-    setError('');
+    setError(''); // Clear previous errors specific to this fetch
     try {
-      const res = await axios.get('http://localhost:3000/api/voted-polls', { withCredentials: true });
-      // Add a flag to voted polls if the current user is also the creator
-      const processedVotedPolls = (res.data.polls || []).map(vp => ({
+      const res = await apiClient.get('/api/voted-polls'); // Use apiClient
+      const pollsFromApi = res.data.polls || [];
+      
+      // Ensure currentMyPolls is an array before using .some()
+      const localMyPolls = Array.isArray(currentMyPolls) ? currentMyPolls : myPolls;
+
+      const processedVotedPolls = pollsFromApi.map(vp => ({
         ...vp,
-        isUserCreator: myPolls.some(mp => mp._id === vp._id) // Check against already fetched myPolls
+        isUserCreator: localMyPolls.some(mp => mp._id === vp._id)
       }));
       setVotedPolls(processedVotedPolls);
     } catch (err) {
       console.error("Error fetching voted polls:", err);
       setError(err.response?.data?.error || 'Failed to fetch polls you voted on.');
-      setVotedPolls([]);
+      setVotedPolls([]); // Clear voted polls on error
     } finally {
       setLoadingVotedPolls(false);
     }
   };
-  
-  useEffect(() => {
-    if (!loadingMyPolls && myPolls.length > 0) { 
-        fetchVotedPolls();
+
+  const fetchMyPolls = async () => {
+    setLoadingMyPolls(true);
+    setError(''); // Clear previous errors specific to this fetch
+    try {
+      const res = await apiClient.get('/api/my-polls'); // Use apiClient
+      const fetchedMyPolls = res.data.polls || [];
+      setMyPolls(fetchedMyPolls);
+      // After myPolls are fetched, fetch votedPolls to correctly set isUserCreator
+      // Pass the freshly fetched myPolls to avoid using stale state
+      if (fetchedMyPolls.length > 0) {
+         await fetchVotedPolls(fetchedMyPolls); // Await if fetchVotedPolls is async and you want to ensure order
+      } else {
+         await fetchVotedPolls([]); // Call with empty array if no polls created by user
+      }
+
+    } catch (err) {
+      console.error("Error fetching my polls:", err);
+      setError(err.response?.data?.error || 'Failed to fetch your created polls.');
+      setMyPolls([]); // Clear my polls on error
+      setLoadingVotedPolls(false); // Also stop voted polls loading if myPolls fails
+    } finally {
+      setLoadingMyPolls(false);
     }
-  }, [myPolls]); 
+  };
+
+  useEffect(() => {
+    fetchMyPolls();
+    // Initial fetchVotedPolls is now triggered by fetchMyPolls completion
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
+
+  // This useEffect for re-fetching votedPolls when myPolls changes is a bit tricky.
+  // It can lead to extra calls. The logic in fetchMyPolls to call fetchVotedPolls after
+  // myPolls are successfully fetched is generally better.
+  // Keeping it might be okay if poll creation/deletion also needs to update this.
+  // For now, the call within fetchMyPolls should handle the initial load correctly.
+  // useEffect(() => {
+  //   // Only refetch if myPolls has actually been loaded and potentially changed
+  //   if (!loadingMyPolls) { 
+  //       fetchVotedPolls(myPolls); // Pass current myPolls
+  //   }
+  // // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [myPolls, loadingMyPolls]); // Depend on myPolls and its loading state
 
 
   const handleCreatePollSubmit = async (pollData) => {
     setError('');
     try {
-      await axios.post('http://localhost:3000/api/create-poll', pollData, { withCredentials: true });
+      await apiClient.post('/api/create-poll', pollData); // Use apiClient
       setShowCreate(false);
-      fetchMyPolls();
+      fetchMyPolls(); // This will also trigger fetchVotedPolls due to the logic inside fetchMyPolls
     } catch (err) {
       console.error("Error creating poll:", err);
       setError(err.response?.data?.error || err.response?.data?.details?.[Object.keys(err.response.data.details)[0]]?.message || 'Failed to create poll.');
@@ -77,8 +101,8 @@ export default function UserDashboard() {
     setError('');
     if (!window.confirm("Are you sure you want to delete this poll? This action cannot be undone.")) return;
     try {
-      await axios.delete(`http://localhost:3000/api/delete-poll/${pollId}`, { withCredentials: true });
-      fetchMyPolls();
+      await apiClient.delete(`/api/delete-poll/${pollId}`); // Use apiClient
+      fetchMyPolls(); // This will also trigger fetchVotedPolls
     } catch (err) {
       console.error("Error deleting poll:", err);
       setError(err.response?.data?.message || 'Failed to delete poll.');
@@ -105,12 +129,13 @@ export default function UserDashboard() {
     </div>
   );
 
-
   return (
     <div className="bg-slate-100 min-h-screen py-8 md:py-12">
       <div className="max-w-4xl mx-auto px-4">
         <header className="mb-10 text-center">
+          {/* TODO: Add personalized greeting here if currentUser is available via props/context */}
           <h1 className="text-3xl md:text-4xl font-bold text-sky-700">My Polls Dashboard</h1>
+          <p className="text-slate-600 mt-1">Manage your polls and see your voting activity.</p>
         </header>
 
         {error && (

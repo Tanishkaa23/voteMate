@@ -17,6 +17,7 @@ frontend/dist/
 frontend/build/
 frontend/.env.local
 frontend/.env.*.local
+frontend/.env.production
 
 # Editor specific (optional but good)
 .vscode/

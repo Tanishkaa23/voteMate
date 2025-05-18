@@ -2,23 +2,22 @@
 import React, { useEffect, useState } from 'react';
 import Cookies from 'js-cookie';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
-import { FiMenu, FiX, FiLogOut, FiAlertTriangle } from 'react-icons/fi'; // Added FiLogOut, FiAlertTriangle
+// import axios from 'axios'; // Remove direct axios import
+import apiClient from '../services/apiClient'; // <<--- IMPORT apiClient
+import { FiMenu, FiX, FiLogOut, FiAlertTriangle } from 'react-icons/fi';
 
 const NavBar = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(!!Cookies.get('token'));
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-
-  // **** NEW STATE FOR LOGOUT CONFIRMATION MODAL ****
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     const handleAuthChange = () => {
       setIsLoggedIn(!!Cookies.get('token'));
     };
-    handleAuthChange();
+    handleAuthChange(); // Initial check
     window.addEventListener('authChange', handleAuthChange);
     return () => {
       window.removeEventListener('authChange', handleAuthChange);
@@ -29,29 +28,27 @@ const NavBar = () => {
     setIsMobileMenuOpen(false);
   }, [location]);
 
-  // **** MODIFIED LOGOUT LOGIC ****
   const handleLogoutClick = () => {
-    // Step 1: Show the confirmation modal
     setShowLogoutConfirm(true);
   };
 
   const confirmActualLogout = async () => {
-    // Step 2: User confirmed, proceed with actual logout
-    setShowLogoutConfirm(false); // Close the modal
+    setShowLogoutConfirm(false);
     try {
-      await axios.post('http://localhost:3000/user/logout', {}, { withCredentials: true });
-      Cookies.remove('token');
-      window.dispatchEvent(new Event('authChange'));
+      // Use apiClient for the logout request
+      await apiClient.post('/user/logout', {}); // baseURL and withCredentials are handled by apiClient
+      Cookies.remove('token'); // Client-side cookie removal
+      window.dispatchEvent(new Event('authChange')); // Notify of auth state change
       navigate('/');
     } catch (err) {
       console.error("Logout error", err);
-      alert('Logout failed. Please try again.');
+      // More specific error from backend if available
+      alert(err.response?.data?.message || err.response?.data?.error || 'Logout failed. Please try again.');
     }
   };
 
   const cancelLogout = () => {
-    // Step 3: User cancelled
-    setShowLogoutConfirm(false); // Close the modal
+    setShowLogoutConfirm(false);
   };
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -84,9 +81,8 @@ const NavBar = () => {
           >
             Dashboard
           </Link>
-          {/* Use handleLogoutClick to show modal first */}
           <button
-            onClick={handleLogoutClick} // <<<< CHANGED FROM handleLogout
+            onClick={handleLogoutClick}
             className={`
               ${navLinkBaseClasses} 
               ${inactiveNavLinkClasses} 
@@ -94,7 +90,7 @@ const NavBar = () => {
               ${isMobile ? 'w-full text-center block mt-1 py-2.5' : 'py-2'}
             `}
           >
-            <FiLogOut className={`inline mr-1 ${isMobile ? 'hidden' : ''}`} /> {/* Optional icon */}
+            <FiLogOut className={`inline mr-1 ${isMobile ? 'hidden' : ''}`} />
             Logout
           </button>
         </>
@@ -118,9 +114,8 @@ const NavBar = () => {
   );
 
   return (
-    <> {/* Use Fragment shorthand */}
+    <>
       <nav className="bg-sky-800 shadow-md sticky top-0 z-50">
-        {/* ... Your existing Navbar structure ... */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
             <div className="flex-shrink-0">
@@ -158,10 +153,9 @@ const NavBar = () => {
         </div>
       </nav>
 
-      {/* **** LOGOUT CONFIRMATION MODAL **** */}
       {showLogoutConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[100] p-4 backdrop-blur-sm"> {/* Increased z-index */}
-          <div className="bg-white p-6 sm:p-8 rounded-xl shadow-2xl max-w-md w-full transform transition-all scale-100 opacity-100"> {/* Added transform classes for potential animation */}
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[100] p-4 backdrop-blur-sm">
+          <div className="bg-white p-6 sm:p-8 rounded-xl shadow-2xl max-w-md w-full">
             <div className="flex items-start">
                 <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
                     <FiAlertTriangle className="h-6 w-6 text-red-600" aria-hidden="true" />

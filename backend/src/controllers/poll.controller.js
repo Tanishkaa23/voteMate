@@ -65,50 +65,56 @@ module.exports.viewPollController = async (req, res) => {
 // VOTE ON A POLL
 module.exports.votePollController = async (req, res) => {
   try {
-    const { pollId, optionIndex } = req.body; // optionIndex is the index of the option chosen
-    const userId = req.user.id;
+    // ---- CHANGE THESE LINES ----
+    const pollId = req.params.id; // Get pollId from URL parameters
+    const { optionIndex } = req.body; // Get optionIndex from request body
+    // ---- END OF CHANGE ----
+
+    const userId = req.user.id; // From authMiddleware
+
+    console.log(`[votePollController] Attempting to vote. Poll ID: ${pollId}, User ID: ${userId}, Option Index: ${optionIndex}`); // DEBUGGING
 
     if (optionIndex === undefined || typeof optionIndex !== 'number') {
       return res.status(400).json({ message: "optionIndex is required and must be a number" });
     }
 
-    const poll = await pollModel.findById(pollId);
+    // Find the poll by ID
+    const poll = await pollModel.findById(pollId); // Use the pollId from params
+
     if (!poll) {
-      return res.status(404).json({ message: "Poll not found" });
+      console.log(`[votePollController] Poll not found with ID: ${pollId}`); // DEBUGGING
+      return res.status(404).json({ message: "Poll not found by controller." }); // Specific message for debugging
     }
+
+    console.log(`[votePollController] Poll found: ${poll.question}`); // DEBUGGING
 
     if (optionIndex < 0 || optionIndex >= poll.options.length) {
       return res.status(400).json({ message: "Invalid option selected" });
     }
 
-    // Check if user has already voted
     const existingVote = poll.voters.find(voter => voter.userId.toString() === userId.toString());
     if (existingVote) {
       return res.status(400).json({ message: "You've already voted on this poll" });
     }
 
-    // Increment vote count for the chosen option
-    // Ensure votes array is correctly sized (should be by createPoll)
     if (!poll.votes || poll.votes.length !== poll.options.length) {
-        poll.votes = Array(poll.options.length).fill(0); // Safeguard
+        poll.votes = Array(poll.options.length).fill(0);
     }
     poll.votes[optionIndex] = (poll.votes[optionIndex] || 0) + 1;
-    // Mark the option as voted by Mongoose for atomicity if possible, or ensure save reflects this
-    poll.markModified(`votes.${optionIndex}`);
+    poll.markModified(`votes`); // Mark the entire votes array as modified
 
-
-    // Add voter information (userId and their chosen optionIndex)
     poll.voters.push({ userId: userId, optionIndex: optionIndex });
+    poll.markModified('voters'); // Mark voters array as modified
 
     await poll.save();
     
-    // Fetch the updated poll to return with populated createdBy if needed,
-    // or just send a success message. For consistency, let's send the updated poll.
     const updatedPoll = await pollModel.findById(pollId).populate('createdBy', 'username');
 
+    console.log(`[votePollController] Vote successful for poll ID: ${pollId}`); // DEBUGGING
     res.status(200).json({ message: "Voted successfully on this poll", poll: updatedPoll });
+
   } catch (error) {
-    console.error("Server error in votePollController:", error);
+    console.error("[votePollController] Server error:", error);
     res.status(500).json({ message: "Server error while voting", error: error.message });
   }
 };
