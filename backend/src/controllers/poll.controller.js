@@ -65,28 +65,26 @@ module.exports.viewPollController = async (req, res) => {
 // VOTE ON A POLL
 module.exports.votePollController = async (req, res) => {
   try {
-    // ---- CHANGE THESE LINES ----
-    const pollId = req.params.id; // Get pollId from URL parameters
-    const { optionIndex } = req.body; // Get optionIndex from request body
-    // ---- END OF CHANGE ----
+   
+    const pollId = req.params.id; 
+    const { optionIndex } = req.body; 
+   
 
-    const userId = req.user.id; // From authMiddleware
+    const userId = req.user.id; 
 
-    console.log(`[votePollController] Attempting to vote. Poll ID: ${pollId}, User ID: ${userId}, Option Index: ${optionIndex}`); // DEBUGGING
 
     if (optionIndex === undefined || typeof optionIndex !== 'number') {
       return res.status(400).json({ message: "optionIndex is required and must be a number" });
     }
 
-    // Find the poll by ID
-    const poll = await pollModel.findById(pollId); // Use the pollId from params
+    const poll = await pollModel.findById(pollId); 
 
     if (!poll) {
-      console.log(`[votePollController] Poll not found with ID: ${pollId}`); // DEBUGGING
-      return res.status(404).json({ message: "Poll not found by controller." }); // Specific message for debugging
+      console.log(`[votePollController] Poll not found with ID: ${pollId}`); 
+      return res.status(404).json({ message: "Poll not found by controller." }); 
     }
 
-    console.log(`[votePollController] Poll found: ${poll.question}`); // DEBUGGING
+    console.log(`[votePollController] Poll found: ${poll.question}`); 
 
     if (optionIndex < 0 || optionIndex >= poll.options.length) {
       return res.status(400).json({ message: "Invalid option selected" });
@@ -101,16 +99,16 @@ module.exports.votePollController = async (req, res) => {
         poll.votes = Array(poll.options.length).fill(0);
     }
     poll.votes[optionIndex] = (poll.votes[optionIndex] || 0) + 1;
-    poll.markModified(`votes`); // Mark the entire votes array as modified
+    poll.markModified(`votes`); 
 
     poll.voters.push({ userId: userId, optionIndex: optionIndex });
-    poll.markModified('voters'); // Mark voters array as modified
+    poll.markModified('voters'); 
 
     await poll.save();
     
     const updatedPoll = await pollModel.findById(pollId).populate('createdBy', 'username');
 
-    console.log(`[votePollController] Vote successful for poll ID: ${pollId}`); // DEBUGGING
+    console.log(`[votePollController] Vote successful for poll ID: ${pollId}`); 
     res.status(200).json({ message: "Voted successfully on this poll", poll: updatedPoll });
 
   } catch (error) {
@@ -119,22 +117,17 @@ module.exports.votePollController = async (req, res) => {
   }
 };
 
-// GET POLLS CREATED BY THE CURRENT USER
-// poll.controller.js
-
-// ... other controllers ...
 
 module.exports.getMyPolls = async (req, res) => {
   try {
-    // req.user.id authMiddleware se aana chahiye
     if (!req.user || !req.user.id) {
         return res.status(401).json({ error: "User not authenticated to fetch their polls." });
     }
     
-    const userId = req.user.id; // Logged in user's ID
+    const userId = req.user.id; 
 
-    const myPolls = await pollModel.find({ createdBy: userId }) // <<--- YEH LINE IMPORTANT HAI
-                                   .populate('createdBy', 'username') // Optional: if you still want creator info (it will be 'You')
+    const myPolls = await pollModel.find({ createdBy: userId }) 
+                                   .populate('createdBy', 'username') 
                                    .sort({ createdAt: -1 });
 
     res.status(200).json({ message: "Your created polls fetched successfully", polls: myPolls });
@@ -143,40 +136,35 @@ module.exports.getMyPolls = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch your polls", details: err.message });
   }
 };
-// GET POLLS THE CURRENT USER HAS VOTED ON
 module.exports.getVotedPolls = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    // Find polls where the 'voters' array contains an element with 'userId' matching the current user's ID
     const pollsVotedByUser = await pollModel.find({ 'voters.userId': userId })
-                                           .populate('createdBy', 'username') // Optional: if you need creator info
-                                           .sort({ updatedAt: -1 }); // Sort by when they were last updated (e.g., voted on)
+                                           .populate('createdBy', 'username') 
+                                           .sort({ updatedAt: -1 }); 
 
     if (!pollsVotedByUser || pollsVotedByUser.length === 0) {
       return res.status(200).json({ message: 'You have not voted on any polls yet.', polls: [] });
     }
 
     const formattedVotedPolls = pollsVotedByUser.map(poll => {
-      // Find the specific vote entry for this user in this poll
       const userVote = poll.voters.find(voter => voter.userId.toString() === userId.toString());
 
-      // This should always be found due to the MongoDB query, but as a safeguard:
       if (!userVote) {
         console.warn(`User vote details not found in poll ${poll._id} for user ${userId} despite query.`);
-        return null; // Or handle as an error / skip this poll
+        return null; 
       }
       
       return {
         _id: poll._id,
         question: poll.question,
         options: poll.options,
-        votes: poll.votes, // Full vote counts for all options
-        createdBy: poll.createdBy, // Creator info
-        // Add the index of the option the current user voted for
-        votedOptionIndex: userVote ? userVote.optionIndex : -1, // -1 if somehow not found
+        votes: poll.votes, 
+        createdBy: poll.createdBy, 
+        votedOptionIndex: userVote ? userVote.optionIndex : -1, 
       };
-    }).filter(Boolean); // Remove any nulls if added
+    }).filter(Boolean); 
 
     res.status(200).json({ message: 'Polls you voted on fetched successfully', polls: formattedVotedPolls });
   } catch (err) {
@@ -185,10 +173,10 @@ module.exports.getVotedPolls = async (req, res) => {
   }
 };
 
-// DELETE A POLL (Assuming only creator can delete)
+
 module.exports.deletePollController = async (req, res) => {
   try {
-    const pollId = req.params.id; // Assuming route is /api/delete-poll/:id
+    const pollId = req.params.id; 
     const userId = req.user.id;
 
     const poll = await pollModel.findById(pollId);
@@ -202,7 +190,6 @@ module.exports.deletePollController = async (req, res) => {
     }
 
     await pollModel.findByIdAndDelete(pollId);
-    // Or if you use Mongoose pre/post remove hooks: await poll.remove();
 
     res.status(200).json({ message: "Poll deleted successfully", pollId: pollId });
   } catch (error) {
