@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react'; 
+// frontend/src/Pages/Register.jsx
+import React, { useState, useEffect } from 'react'; // Added useEffect
 import Cookies from 'js-cookie';
-import axios from 'axios';
+import apiClient from '../services/apiClient'; // Assuming this is your configured axios instance
 import { useNavigate, Link } from 'react-router-dom';
-import { FiUserPlus, FiMail, FiLock, FiUser, FiAlertCircle, FiCheckCircle } from 'react-icons/fi'; 
+import { FiUserPlus, FiMail, FiLock, FiUser, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -13,60 +14,43 @@ const Register = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-
-  // **** NEW STATE FOR SUCCESS TOAST ****
   const [showRegisterSuccessToast, setShowRegisterSuccessToast] = useState(false);
 
   const handleChange = e => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     if (error) setError('');
-    if (showRegisterSuccessToast) setShowRegisterSuccessToast(false); 
+    if (showRegisterSuccessToast) setShowRegisterSuccessToast(false);
   };
 
   const handleSubmit = async e => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    setShowRegisterSuccessToast(false); 
+    setShowRegisterSuccessToast(false);
 
-    if (!formData.username.trim() || !formData.email.trim() || !formData.password.trim()) {
-        setError("All fields are required.");
-        setLoading(false);
-        return;
-    }
-    if (!/\S+@\S+\.\S+/.test(formData.email)) {
-        setError("Please enter a valid email address.");
-        setLoading(false);
-        return;
-    }
-    if (formData.password.length < 6) {
-        setError("Password must be at least 6 characters long.");
-        setLoading(false);
-        return;
-    }
+    // Basic client-side validation (same as before)
+    if (!formData.username.trim() || !formData.email.trim() || !formData.password.trim()) { setError("All fields are required."); setLoading(false); return; }
+    if (!/\S+@\S+\.\S+/.test(formData.email)) { setError("Please enter a valid email address."); setLoading(false); return; }
+    if (formData.password.length < 6) { setError("Password must be at least 6 characters long."); setLoading(false); return; }
 
     try {
-      const res = await axios.post(
-        'http://localhost:3000/user/register',
-        { ...formData, role: 'user' },
-        { withCredentials: true }
-      );
+      // apiClient already has withCredentials: true
+      const res = await apiClient.post('/user/register', { ...formData, role: 'user' });
 
       if (res.data.user && res.data.token) {
         Cookies.set('token', res.data.token, { 
-            expires: 7, 
-            // secure: process.env.NODE_ENV === 'production', 
-            // sameSite: 'lax' 
+            expires: 7, // 7 days
+            path: '/',  // IMPORTANT for visibility across the site
+            // secure: process.env.NODE_ENV === 'production' // Enable for HTTPS production
         });
         
         window.dispatchEvent(new Event('authChange'));
         
-        
         setShowRegisterSuccessToast(true);
-
+        
         setTimeout(() => {
           navigate('/dashboard');
-        }, 1000); 
+        }, 2000);
 
       } else {
         setError(res.data.message || 'Registration failed. Please try again.');
@@ -83,31 +67,25 @@ const Register = () => {
     }
   };
 
-  
   useEffect(() => {
     let timer;
     if (showRegisterSuccessToast) {
       timer = setTimeout(() => {
         setShowRegisterSuccessToast(false);
-      }, 3000); 
+      }, 3000);
     }
     return () => clearTimeout(timer);
   }, [showRegisterSuccessToast]);
 
+  // ... (rest of your JSX - I'm using the one you provided earlier which was good)
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-100 px-4 py-12 sm:px-6 lg:px-8 relative"> {/* Added relative */}
-      
-      {/* **** REGISTER SUCCESS TOAST **** */}
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-100 px-4 py-12 sm:px-6 lg:px-8 relative">
       {showRegisterSuccessToast && (
-        <div 
-          className="fixed top-5 right-5 md:top-8 md:right-8 bg-emerald-500 text-white px-5 py-3 rounded-lg shadow-xl z-[100] flex items-center transition-all duration-300 ease-out animate-slideDownFadeIn"
-          
-        >
+        <div className="fixed top-5 right-5 md:top-8 md:right-8 bg-emerald-500 text-white px-5 py-3 rounded-lg shadow-xl z-[100] flex items-center animate-slideDownFadeIn">
           <FiCheckCircle className="h-6 w-6 mr-3" />
           Registered successfully! Redirecting...
         </div>
       )}
-
       <div className="max-w-md w-full space-y-8">
         <div>
           <Link to="/" className="flex justify-center">
@@ -115,118 +93,37 @@ const Register = () => {
               vote<span className="text-teal-500">Mate</span>
             </h1>
           </Link>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link to="/login" className="font-medium text-sky-600 hover:text-sky-500">
-              sign in to your existing account
-            </Link>
-          </p>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Create your account</h2>
+          <p className="mt-2 text-center text-sm text-gray-600">Or{' '} <Link to="/login" className="font-medium text-sky-600 hover:text-sky-500">sign in to your existing account</Link></p>
         </div>
-
         <form onSubmit={handleSubmit} className="mt-8 space-y-6 bg-white p-8 shadow-xl rounded-xl">
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-300 text-red-700 rounded-md text-sm flex items-center">
-              <FiAlertCircle className="h-5 w-5 mr-2" aria-hidden="true" />
-              {error}
-            </div>
-          )}
-          
+          {error && (<div className="p-3 bg-red-50 border border-red-300 text-red-700 rounded-md text-sm flex items-center"><FiAlertCircle className="h-5 w-5 mr-2" />{error}</div>)}
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
-              <label htmlFor="username" className="sr-only">
-                Username
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiUser className="h-5 w-5 text-gray-400" aria-hidden="true" />
-                </div>
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  autoComplete="username"
-                  required
-                  className="appearance-none rounded-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-sky-500 focus:border-sky-500 focus:z-10 sm:text-sm transition-shadow"
-                  placeholder="Username"
-                  value={formData.username}
-                  onChange={handleChange}
-                />
-              </div>
+              <label htmlFor="username" className="sr-only">Username</label>
+              <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FiUser className="h-5 w-5 text-gray-400" /></div><input id="username" name="username" type="text" autoComplete="username" required value={formData.username} onChange={handleChange} className="appearance-none rounded-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-sky-500 focus:border-sky-500 focus:z-10 sm:text-sm transition-shadow" placeholder="Username" /></div>
             </div>
             <div>
-              <label htmlFor="email-address" className="sr-only">
-                Email address
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiMail className="h-5 w-5 text-gray-400" aria-hidden="true" />
-                </div>
-                <input
-                  id="email-address"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  className="appearance-none rounded-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-sky-500 focus:border-sky-500 focus:z-10 sm:text-sm transition-shadow"
-                  placeholder="Email address"
-                  value={formData.email}
-                  onChange={handleChange}
-                />
-              </div>
+              <label htmlFor="email-address" className="sr-only">Email address</label>
+              <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FiMail className="h-5 w-5 text-gray-400" /></div><input id="email-address" name="email" type="email" autoComplete="email" required value={formData.email} onChange={handleChange} className="appearance-none rounded-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-sky-500 focus:border-sky-500 focus:z-10 sm:text-sm transition-shadow" placeholder="Email address" /></div>
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
-              <div className="relative">
-                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiLock className="h-5 w-5 text-gray-400" aria-hidden="true" />
-                </div>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  className="appearance-none rounded-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-sky-500 focus:border-sky-500 focus:z-10 sm:text-sm transition-shadow"
-                  placeholder="Password (min. 6 characters)"
-                  value={formData.password}
-                  onChange={handleChange}
-                />
-              </div>
+              <label htmlFor="password" className="sr-only">Password</label>
+              <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FiLock className="h-5 w-5 text-gray-400" /></div><input id="password" name="password" type="password" autoComplete="new-password" required value={formData.password} onChange={handleChange} className="appearance-none rounded-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-sky-500 focus:border-sky-500 focus:z-10 sm:text-sm transition-shadow" placeholder="Password (min. 6 characters)" /></div>
             </div>
           </div>
-
           <div>
-            <button
-              type="submit"
-              disabled={loading || showRegisterSuccessToast}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:bg-sky-300 transition-colors"
-            >
+            <button type="submit" disabled={loading || showRegisterSuccessToast} className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:bg-sky-300 transition-colors">
               <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                {loading || showRegisterSuccessToast ? ( 
-                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                ) : (
-                  <FiUserPlus className="h-5 w-5 text-sky-500 group-hover:text-sky-400" aria-hidden="true" />
-                )}
+                {loading || showRegisterSuccessToast ? (<svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>) : (<FiUserPlus className="h-5 w-5 text-sky-500 group-hover:text-sky-400" />)}
               </span>
               {loading ? 'Creating Account...' : (showRegisterSuccessToast ? 'Success!' : 'Create Account')}
             </button>
           </div>
         </form>
-        <p className="mt-4 text-center text-sm text-gray-600">
-          By creating an account, you agree to our <br/>
-          <a href="/terms" className="font-medium text-sky-600 hover:text-sky-500">Terms of Service</a> and <a href="/privacy" className="font-medium text-sky-600 hover:text-sky-500">Privacy Policy</a>.
-        </p>
+        <p className="mt-4 text-center text-sm text-gray-600">By creating an account, you agree to our <br/><a href="/terms" className="font-medium text-sky-600 hover:text-sky-500">Terms of Service</a> and <a href="/privacy" className="font-medium text-sky-600 hover:text-sky-500">Privacy Policy</a>.</p>
       </div>
     </div>
   );
 };
-
 export default Register;
