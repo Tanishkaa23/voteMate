@@ -4,8 +4,11 @@ const cookieParser = require('cookie-parser')
 const cors = require('cors');
 
 app.use(cors({
-  origin: 'http://localhost:5173',
-  credentials: true,
+  origin: [
+    'http://localhost:5173', 
+    'https://myvotemate.vercel.app'
+  ],
+  credentials: true
 }));
 
 app.use(cookieParser())
