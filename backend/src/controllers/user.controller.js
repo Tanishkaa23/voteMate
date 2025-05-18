@@ -44,11 +44,12 @@ module.exports.userRegisterController = async (req, res) => {
 
     // Set a non-HttpOnly cookie so js-cookie can access it on the client
     res.cookie('token', token, { 
-      httpOnly: false, // IMPORTANT: Allows client-side JS to read this cookie
-      secure: process.env.NODE_ENV === 'production', // Send only over HTTPS in production
-      sameSite: 'lax', // Good default for CSRF protection
-      path: '/',       // IMPORTANT: Makes cookie available across the entire domain
-      maxAge: 24 * 60 * 60 * 1000 // 1 day in milliseconds
+      httpOnly: false, // Client-side JS (js-cookie) isse read kar payega
+      secure: true,    // <<--- IMPORTANT: SameSite=None ke saath Secure=true zaroori hai
+      sameSite: 'None',// <<--- IMPORTANT: Cross-site requests ke liye
+      path: '/',       
+      maxAge: 24 * 60 * 60 * 1000
+      // domain: '.onrender.com' // Isko ABHI MAT LAGANA, pehle upar wala try karo
     });
 
     const userResponse = {
@@ -113,12 +114,13 @@ module.exports.loginUserController = async (req, res) => {
     );
 
     // Set a non-HttpOnly cookie
-    res.cookie('token', token, {
-      httpOnly: false, // IMPORTANT
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',       // IMPORTANT
+    res.cookie('token', token, { 
+      httpOnly: false, // Client-side JS (js-cookie) isse read kar payega
+      secure: true,    // <<--- IMPORTANT: SameSite=None ke saath Secure=true zaroori hai
+      sameSite: 'None',// <<--- IMPORTANT: Cross-site requests ke liye
+      path: '/',       
       maxAge: 24 * 60 * 60 * 1000
+      // domain: '.onrender.com' // Isko ABHI MAT LAGANA, pehle upar wala try karo
     });
     
     const userResponse = {
