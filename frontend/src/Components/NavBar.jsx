@@ -2,8 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import Cookies from 'js-cookie';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-// import axios from 'axios'; // Remove direct axios import
-import apiClient from '../services/apiClient'; // <<--- IMPORT apiClient
+import apiClient from '../services/apiClient'; // Ensure path is correct
 import { FiMenu, FiX, FiLogOut, FiAlertTriangle } from 'react-icons/fi';
 
 const NavBar = () => {
@@ -15,14 +14,20 @@ const NavBar = () => {
 
   useEffect(() => {
     const handleAuthChange = () => {
-      setIsLoggedIn(!!Cookies.get('token'));
+      const tokenExists = !!Cookies.get('token');
+      console.log("NavBar: handleAuthChange called. Token found:", tokenExists, "Current token value:", Cookies.get('token')); // DEBUG
+      setIsLoggedIn(tokenExists);
     };
+
+    console.log("NavBar: Mounting or re-rendering. Initial token status:", !!Cookies.get('token')); // DEBUG
     handleAuthChange(); // Initial check
+
     window.addEventListener('authChange', handleAuthChange);
     return () => {
+      console.log("NavBar: Cleaning up authChange event listener."); // DEBUG
       window.removeEventListener('authChange', handleAuthChange);
     };
-  }, []);
+  }, []); // Empty dependency array means this runs once on mount and cleans up on unmount
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
@@ -35,14 +40,12 @@ const NavBar = () => {
   const confirmActualLogout = async () => {
     setShowLogoutConfirm(false);
     try {
-      // Use apiClient for the logout request
-      await apiClient.post('/user/logout', {}); // baseURL and withCredentials are handled by apiClient
-      Cookies.remove('token'); // Client-side cookie removal
-      window.dispatchEvent(new Event('authChange')); // Notify of auth state change
+      await apiClient.post('/user/logout', {});
+      Cookies.remove('token', { path: '/' }); // Specify path for robust removal
+      window.dispatchEvent(new Event('authChange'));
       navigate('/');
     } catch (err) {
       console.error("Logout error", err);
-      // More specific error from backend if available
       alert(err.response?.data?.message || err.response?.data?.error || 'Logout failed. Please try again.');
     }
   };
@@ -57,6 +60,7 @@ const NavBar = () => {
   const activeNavLinkClasses = "bg-sky-700 text-white";
   const inactiveNavLinkClasses = "text-sky-100 hover:bg-sky-600 hover:text-white";
 
+  // NavLinksContent remains the same as your provided code
   const NavLinksContent = ({ isMobile = false }) => (
     <>
       <Link
@@ -112,7 +116,8 @@ const NavBar = () => {
       )}
     </>
   );
-
+  
+  // Modal and main nav structure remains the same as your provided code
   return (
     <>
       <nav className="bg-sky-800 shadow-md sticky top-0 z-50">
