@@ -1,6 +1,6 @@
 // frontend/src/Pages/Register.jsx
 import React, { useState, useEffect } from 'react';
-// import Cookies from 'js-cookie'; // <<--- Iski zaroorat nahi hai cookie set karne ke liye yahan
+import Cookies from 'js-cookie'; // Ensure this is imported
 import apiClient from '../services/apiClient'; // Ensure path is correct
 import { useNavigate, Link } from 'react-router-dom';
 import { FiUserPlus, FiMail, FiLock, FiUser, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
@@ -12,7 +12,7 @@ const Register = () => {
     password: '',
   });
   const [error, setError] = useState('');
-  const [formErrors, setFormErrors] = useState({}); // For specific field errors (from your previous version)
+  const [formErrors, setFormErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [showRegisterSuccessToast, setShowRegisterSuccessToast] = useState(false);
@@ -27,7 +27,7 @@ const Register = () => {
     if (showRegisterSuccessToast) setShowRegisterSuccessToast(false);
   };
 
-  const validateForm = () => { // Assuming you have this validation function
+  const validateForm = () => {
     const newErrors = {};
     if (!formData.username.trim()) newErrors.username = "Username is required.";
     if (!formData.email.trim()) newErrors.email = "Email is required.";
@@ -51,16 +51,19 @@ const Register = () => {
 
     setLoading(true);
     try {
-      // apiClient already has withCredentials: true
       const res = await apiClient.post('/user/register', { ...formData, role: 'user' });
 
-      if (res.data.user && res.data.token) { // Backend sets HttpOnly:false cookie AND returns token
+      if (res.data.user && res.data.token) {
+        // Set the cookie client-side using js-cookie
+        Cookies.set('token', res.data.token, { 
+            expires: 7, // 7 days
+            path: '/',
+            secure: window.location.protocol === 'https:',
+            sameSite: 'Lax'
+        });
+        console.log("[Register.jsx] Client-side cookie 'token' set by js-cookie. Value:", Cookies.get('token')); // DEBUG
         
-        // **** REMOVED Cookies.set() FROM HERE ****
-        // Backend is responsible for setting the cookie via Set-Cookie header.
-        // js-cookie in NavBar will read the cookie set by the backend.
-        
-        window.dispatchEvent(new Event('authChange')); // Notify NavBar to re-check cookie
+        window.dispatchEvent(new Event('authChange'));
         
         setShowRegisterSuccessToast(true);
         
@@ -69,7 +72,7 @@ const Register = () => {
         }, 2000);
 
       } else {
-        setError(res.data.message || 'Registration failed. Unexpected response from server.');
+        setError(res.data.message || 'Registration failed. Please try again.');
       }
     } catch (err) {
       console.error("Registration error:", err.response || err.message);
@@ -95,7 +98,7 @@ const Register = () => {
     return () => clearTimeout(timer);
   }, [showRegisterSuccessToast]);
 
-  // JSX remains the same as your provided version with formErrors
+  // JSX (No changes needed from your provided version)
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-100 px-4 py-12 sm:px-6 lg:px-8 relative">
       {showRegisterSuccessToast && (
@@ -116,42 +119,24 @@ const Register = () => {
         </div>
         
         <form onSubmit={handleSubmit} className="mt-8 space-y-6 bg-white p-8 shadow-xl rounded-xl">
-          {error && (
-            <div className="p-3 mb-4 bg-red-50 border border-red-300 text-red-700 rounded-md text-sm flex items-center">
-              <FiAlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
+          {error && (<div className="p-3 mb-4 bg-red-50 border border-red-300 text-red-700 rounded-md text-sm flex items-center"><FiAlertCircle className="h-5 w-5 mr-2 flex-shrink-0" /><span>{error}</span></div>)}
           <div className="space-y-4">
             <div>
               <label htmlFor="username" className="sr-only">Username</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FiUser className="h-5 w-5 text-gray-400" /></div>
-                <input id="username" name="username" type="text" autoComplete="username" required value={formData.username} onChange={handleChange} className={`appearance-none relative block w-full px-3 py-3 pl-10 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-sky-500 focus:border-sky-500 focus:z-10 sm:text-sm transition-shadow ${formErrors.username ? 'border-red-500' : 'border-gray-300'}`} placeholder="Username" />
-              </div>
+              <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FiUser className="h-5 w-5 text-gray-400" /></div><input id="username" name="username" type="text" autoComplete="username" required value={formData.username} onChange={handleChange} className={`appearance-none relative block w-full px-3 py-3 pl-10 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-sky-500 focus:border-sky-500 focus:z-10 sm:text-sm transition-shadow ${formErrors.username ? 'border-red-500' : 'border-gray-300'}`} placeholder="Username" /></div>
               {formErrors.username && <p className="mt-1 text-xs text-red-600">{formErrors.username}</p>}
             </div>
-
             <div>
               <label htmlFor="email-address" className="sr-only">Email address</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FiMail className="h-5 w-5 text-gray-400" /></div>
-                <input id="email-address" name="email" type="email" autoComplete="email" required value={formData.email} onChange={handleChange} className={`appearance-none relative block w-full px-3 py-3 pl-10 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-sky-500 focus:border-sky-500 focus:z-10 sm:text-sm transition-shadow ${formErrors.email ? 'border-red-500' : 'border-gray-300'}`} placeholder="Email address" />
-              </div>
+              <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FiMail className="h-5 w-5 text-gray-400" /></div><input id="email-address" name="email" type="email" autoComplete="email" required value={formData.email} onChange={handleChange} className={`appearance-none relative block w-full px-3 py-3 pl-10 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-sky-500 focus:border-sky-500 focus:z-10 sm:text-sm transition-shadow ${formErrors.email ? 'border-red-500' : 'border-gray-300'}`} placeholder="Email address" /></div>
               {formErrors.email && <p className="mt-1 text-xs text-red-600">{formErrors.email}</p>}
             </div>
-
             <div>
               <label htmlFor="password" className="sr-only">Password</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FiLock className="h-5 w-5 text-gray-400" /></div>
-                <input id="password" name="password" type="password" autoComplete="new-password" required value={formData.password} onChange={handleChange} className={`appearance-none relative block w-full px-3 py-3 pl-10 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-sky-500 focus:border-sky-500 focus:z-10 sm:text-sm transition-shadow ${formErrors.password ? 'border-red-500' : 'border-gray-300'}`} placeholder="Password (min. 6 characters)" />
-              </div>
+              <div className="relative"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><FiLock className="h-5 w-5 text-gray-400" /></div><input id="password" name="password" type="password" autoComplete="new-password" required value={formData.password} onChange={handleChange} className={`appearance-none relative block w-full px-3 py-3 pl-10 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-sky-500 focus:border-sky-500 focus:z-10 sm:text-sm transition-shadow ${formErrors.password ? 'border-red-500' : 'border-gray-300'}`} placeholder="Password (min. 6 characters)" /></div>
               {formErrors.password && <p className="mt-1 text-xs text-red-600">{formErrors.password}</p>}
             </div>
           </div>
-
           <div className="pt-2">
             <button type="submit" disabled={loading || showRegisterSuccessToast} className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:bg-sky-300 transition-colors">
               <span className="absolute left-0 inset-y-0 flex items-center pl-3">
