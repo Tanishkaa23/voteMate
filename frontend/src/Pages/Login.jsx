@@ -1,6 +1,6 @@
 // frontend/src/Pages/Login.jsx
-import React, { useState, useEffect } from 'react'; // <<--- useEffect YAHAN ADD KARO
-import Cookies from 'js-cookie';
+import React, { useState, useEffect } from 'react';
+// import Cookies from 'js-cookie'; // <<--- Iski zaroorat nahi hai cookie set karne ke liye yahan
 import apiClient from '../services/apiClient';
 import { useNavigate, Link } from 'react-router-dom';
 import { FiLogIn, FiMail, FiLock, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
@@ -34,16 +34,15 @@ const Login = () => {
     }
 
     try {
-      const res = await apiClient.post('/user/login', formData);
+      const res = await apiClient.post('/user/login', formData); // apiClient handles withCredentials
 
-      if (res.data.user && res.data.token) {
-        Cookies.set('token', res.data.token, { 
-            expires: 1,
-            path: '/',
-            // secure: process.env.NODE_ENV === 'production' 
-        });
+      if (res.data.user && res.data.token) { // Backend sends user and token, AND sets HttpOnly:false cookie
         
-        window.dispatchEvent(new Event('authChange'));
+        // **** REMOVED Cookies.set() FROM HERE ****
+        // Backend is responsible for setting the cookie via Set-Cookie header.
+        // js-cookie in NavBar will read the cookie set by the backend.
+        
+        window.dispatchEvent(new Event('authChange')); // Notify NavBar to re-check cookie
         
         setShowLoginSuccessToast(true);
         
@@ -52,17 +51,17 @@ const Login = () => {
         }, 2000); 
 
       } else {
-        setError(res.data.message || res.data.error || 'Login failed. Please check your credentials.');
+        // This case might be if backend logic changes and doesn't send user/token on success
+        setError(res.data.message || res.data.error || 'Login failed. Unexpected response from server.');
       }
     } catch (err) {
-      console.error("Login error:", err);
+      console.error("Login error:", err.response || err.message); // Log the full error
       setError(err.response?.data?.message || err.response?.data?.error || 'Login failed. Please check your credentials or try again later.');
     } finally {
       setLoading(false);
     }
   };
 
-  // This useEffect hook needs to be imported
   useEffect(() => {
     let timer;
     if (showLoginSuccessToast) {
@@ -73,7 +72,7 @@ const Login = () => {
     return () => clearTimeout(timer);
   }, [showLoginSuccessToast]);
 
-  // ... (JSX remains the same)
+  // JSX remains the same
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-100 px-4 py-12 sm:px-6 lg:px-8 relative">
       {showLoginSuccessToast && (
